@@ -56,6 +56,9 @@ export interface Settings {
   local_shortcut_volume_up: string;
   local_shortcut_mute: string;
   local_shortcut_fullscreen: string;
+  focus_dnd_enabled: boolean;
+  focus_dnd_on_name: string;
+  focus_dnd_off_name: string;
 }
 
 /** Returned by `check_update` — describes an available update. */

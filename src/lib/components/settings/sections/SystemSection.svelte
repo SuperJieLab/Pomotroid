@@ -33,6 +33,18 @@
     localPort = String($settings.websocket_port);
   });
 
+  let dndOnName = $state($settings.focus_dnd_on_name);
+  let dndOffName = $state($settings.focus_dnd_off_name);
+  $effect(() => {
+    dndOnName = $settings.focus_dnd_on_name;
+    dndOffName = $settings.focus_dnd_off_name;
+  });
+
+  async function saveDndName(key: string, val: string) {
+    const updated = await setSetting(key, val);
+    settings.set(updated);
+  }
+
   let langOpen = $state(false);
   let langEl: HTMLElement | undefined;
 
@@ -88,6 +100,39 @@
 
 <div class="section">
   <div class="group-heading">{m.system_group_integrations()}</div>
+
+  {#if isMac}
+    <div class="group-heading">{m.focus_group()}</div>
+    <SettingsToggle
+      label={m.focus_toggle()}
+      description={m.focus_toggle_desc()}
+      checked={$settings.focus_dnd_enabled}
+      onclick={() => toggle('focus_dnd_enabled', $settings.focus_dnd_enabled)}
+    />
+    {#if $settings.focus_dnd_enabled}
+      <div class="row">
+        <span class="label">{m.focus_on_name()}</span>
+        <input
+          class="name-input"
+          type="text"
+          bind:value={dndOnName}
+          placeholder="Pomotroid DND On"
+          onblur={() => saveDndName('focus_dnd_on_name', dndOnName)}
+        />
+      </div>
+      <div class="row">
+        <span class="label">{m.focus_off_name()}</span>
+        <input
+          class="name-input"
+          type="text"
+          bind:value={dndOffName}
+          placeholder="Pomotroid DND Off"
+          onblur={() => saveDndName('focus_dnd_off_name', dndOffName)}
+        />
+      </div>
+      <p class="note">{m.focus_note()}</p>
+    {/if}
+  {/if}
 
   <SettingsToggle
     label={m.system_toggle_websocket()}
@@ -318,6 +363,29 @@
   }
 
   .port-input:focus {
+    border-color: var(--color-accent);
+  }
+
+  /* DND 快捷指令名输入框：名字可能较长，改为自适应宽度 + 左对齐，
+     不复用 .port-input 的固定 90px 右对齐（那是给端口号用的）。 */
+  .name-input {
+    background: var(--color-hover);
+    border: 1px solid color-mix(in oklch, var(--color-foreground) 18%, transparent);
+    border-radius: 4px;
+    color: var(--color-foreground);
+    font-size: 0.85rem;
+    font-family: monospace;
+    padding: 4px 10px;
+    flex: 1 1 auto;
+    min-width: 180px;
+    max-width: 340px;
+    margin-left: 14px;
+    text-align: left;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+
+  .name-input:focus {
     border-color: var(--color-accent);
   }
 

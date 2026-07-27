@@ -9,6 +9,8 @@ use tauri::{AppHandle, Emitter, Manager};
 
 use crate::audio::{AudioCue, AudioManager};
 use crate::db::{queries, DbState};
+use crate::focus::{self, OsRunner};
+use crate::notifications;
 use crate::settings::Settings;
 use crate::tray::{self, TrayState};
 use crate::websocket::{self, WsState};
@@ -141,7 +143,9 @@ impl TimerController {
         // Send only Reset — the event listener's Reset handler will follow up
         // with Prime once the engine is confirmed Idle. Sending a duration
         // update here first would race the Reset and can leave the UI stale.
-        self.engine.send(TimerCommand::Reset);
+        // `full: true` tells the listener this is a full reset (leave the
+        // work session) so it can force the DND shortcut OFF.
+        self.engine.send(TimerCommand::Reset { full: true });
     }
 
     /// Restart only the current round's timer without touching the sequence.
@@ -149,7 +153,9 @@ impl TimerController {
     /// preserved — only the elapsed time is zeroed.
     pub fn restart_round(&self) {
         log::info!("[timer] restart round");
-        self.engine.send(TimerCommand::Reset);
+        // `full: false` => listener re-applies DND from the *current*
+        // (preserved) round, so a work round keeps DND on across a restart.
+        self.engine.send(TimerCommand::Reset { full: false });
     }
 
     pub fn skip(&self) {
@@ -247,6 +253,35 @@ fn listen_events(
             TimerEvent::Started { total_secs } => {
                 log::info!("[timer] started total={total_secs}s");
                 shared.lock().unwrap().is_running = true;
+
+                // --- DND 联动：按当前轮次类型切换 macOS 勿扰模式 ---
+                // 注意锁顺序：先取 settings 克隆所需字段并 drop，再取 sequence，
+                // 避免与 UI 线程（apply_settings/get_snapshot 先 sequence 后 settings）
+                // 形成相反锁序导致死锁。功能开关闸门在此处，apply_dnd 保持纯函数。
+                {
+                    let s = settings.lock().unwrap();
+                    let enabled = s.focus_dnd_enabled;
+                    let on = s.focus_dnd_on_name.clone();
+                    let off = s.focus_dnd_off_name.clone();
+                    drop(s);
+                    if enabled {
+                        let is_work = focus::should_enable(sequence.lock().unwrap().current_round);
+                        if let Err(e) = focus::apply_dnd(
+                            is_work, &on, &off, &OsRunner, cfg!(target_os = "macos"),
+                        ) {
+                            log::warn!("[focus] DND toggle failed: {e}");
+                            notifications::show(
+                                &app,
+                                "专注模式切换失败",
+                                &format!(
+                                    "请检查快捷指令「{}」是否存在",
+                                    if is_work { &on } else { &off }
+                                ),
+                            );
+                        }
+                    }
+                }
+
                 let _ = app.emit("timer:started", serde_json::json!({ "total_secs": total_secs }));
                 if let Some(ws) = app.try_state::<Arc<WsState>>() {
                     websocket::broadcast_started(&ws, total_secs);
@@ -439,8 +474,8 @@ fn listen_events(
                 tray::update_menu_items(&tray, true, false);
             }
 
-            TimerEvent::Reset => {
-                log::debug!("[timer] idle");
+            TimerEvent::Reset { full } => {
+                log::debug!("[timer] idle (full={full})");
                 // Abandon the active session (leave DB row as-is).
                 current_session_id = None;
 
@@ -449,6 +484,39 @@ fn listen_events(
                     s.elapsed_secs = 0;
                     s.is_running = false;
                 }
+
+                // --- DND 联动：重置时同步系统勿扰模式 ---
+                // full=true  = 用户点「重置」：离开工作会话，强制关闭勿扰；
+                // full=false = 「重新开始轮次」：保留当前轮次，按轮次重新套用
+                //   （工作轮保持开启、休息轮保持关闭），与 Started 逻辑一致。
+                {
+                    let s = settings.lock().unwrap();
+                    let enabled = s.focus_dnd_enabled;
+                    let on = s.focus_dnd_on_name.clone();
+                    let off = s.focus_dnd_off_name.clone();
+                    drop(s);
+                    if enabled {
+                        let is_work = if full {
+                            false
+                        } else {
+                            focus::should_enable(sequence.lock().unwrap().current_round)
+                        };
+                        if let Err(e) = focus::apply_dnd(
+                            is_work, &on, &off, &OsRunner, cfg!(target_os = "macos"),
+                        ) {
+                            log::warn!("[focus] DND toggle failed on reset: {e}");
+                            notifications::show(
+                                &app,
+                                "专注模式切换失败",
+                                &format!(
+                                    "请检查快捷指令「{}」是否存在",
+                                    if is_work { &on } else { &off }
+                                ),
+                            );
+                        }
+                    }
+                }
+
                 let snapshot = build_snapshot(&sequence, &settings, &shared);
                 let _ = app.emit("timer:reset", snapshot);
                 if let Some(ws) = app.try_state::<Arc<WsState>>() {

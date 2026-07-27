@@ -149,5 +149,11 @@
   "tooltip_dial_countdown": "When enabled, the progress arc counts down to zero instead of filling up.",
   "tooltip_auto_start_work": "Automatically start the next work round when a break ends.",
   "tooltip_auto_start_break": "Automatically start the break when a work round completes.",
-  "tooltip_websocket": "Enables a local WebSocket server for external integrations such as stream overlays. Disabled by default."
+  "tooltip_websocket": "Enables a local WebSocket server for external integrations such as stream overlays. Disabled by default.",
+  "focus_group": "Shortcut integration",
+  "focus_toggle": "Auto-toggle Do Not Disturb",
+  "focus_toggle_desc": "Runs the turn-on shortcut when a work round starts and the turn-off shortcut on breaks. Defaults target system Do Not Disturb.",
+  "focus_on_name": "Turn-on shortcut name",
+  "focus_off_name": "Turn-off shortcut name",
+  "focus_note": "Create shortcuts with these names in the Shortcuts app (action: Set Focus → On/Off). Defaults are Pomotroid DND On / Pomotroid DND Off. You can rename either to any shortcut you built (e.g. play white noise, control lights, log to a journal) — it runs automatically on round changes, not limited to DND."
 }

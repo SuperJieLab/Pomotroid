@@ -57,6 +57,13 @@ pub struct Settings {
     pub local_shortcut_volume_up: String,
     pub local_shortcut_mute: String,
     pub local_shortcut_fullscreen: String,
+    /// Focus (Do Not Disturb) integration: when true, the timer toggles macOS
+    /// DND on round start (Work → on, otherwise → off).
+    pub focus_dnd_enabled: bool,
+    /// Name of the Shortcuts-app shortcut that turns DND **on**.
+    pub focus_dnd_on_name: String,
+    /// Name of the Shortcuts-app shortcut that turns DND **off**.
+    pub focus_dnd_off_name: String,
     /// Last known window X coordinate (physical pixels). `None` = use OS default.
     pub window_x: Option<i32>,
     /// Last known window Y coordinate (physical pixels). `None` = use OS default.
@@ -120,6 +127,9 @@ impl Default for Settings {
             local_shortcut_volume_up: "ArrowUp".to_string(),
             local_shortcut_mute: "m".to_string(),
             local_shortcut_fullscreen: "F11".to_string(),
+            focus_dnd_enabled: false,
+            focus_dnd_on_name: "Pomotroid DND On".to_string(),
+            focus_dnd_off_name: "Pomotroid DND Off".to_string(),
             window_x: None,
             window_y: None,
             window_width: None,
@@ -245,6 +255,9 @@ pub fn load(conn: &Connection) -> Result<Settings> {
         local_shortcut_volume_up: map.get("local_shortcut_volume_up").cloned().unwrap_or(d.local_shortcut_volume_up),
         local_shortcut_mute: map.get("local_shortcut_mute").cloned().unwrap_or(d.local_shortcut_mute),
         local_shortcut_fullscreen: map.get("local_shortcut_fullscreen").cloned().unwrap_or(d.local_shortcut_fullscreen),
+        focus_dnd_enabled: parse_bool(&map, "focus_dnd_enabled", d.focus_dnd_enabled),
+        focus_dnd_on_name: map.get("focus_dnd_on_name").cloned().unwrap_or(d.focus_dnd_on_name),
+        focus_dnd_off_name: map.get("focus_dnd_off_name").cloned().unwrap_or(d.focus_dnd_off_name),
         window_x: parse_opt_i32(&map, "window_x"),
         window_y: parse_opt_i32(&map, "window_y"),
         window_width: parse_opt_u32(&map, "window_width"),
@@ -468,5 +481,26 @@ mod tests {
         }
         let s = load(&conn).unwrap();
         assert!(!s.auto_start_work, "auto_start_work must be false after repeated false writes");
+    }
+
+    #[test]
+    fn focus_dnd_defaults() {
+        let conn = setup();
+        seed_defaults(&conn).unwrap();
+        let s = load(&conn).unwrap();
+        assert!(!s.focus_dnd_enabled, "focus_dnd_enabled must default false");
+        assert_eq!(s.focus_dnd_on_name, "Pomotroid DND On");
+        assert_eq!(s.focus_dnd_off_name, "Pomotroid DND Off");
+    }
+
+    #[test]
+    fn focus_dnd_save_and_reload() {
+        let conn = setup();
+        seed_defaults(&conn).unwrap();
+        save_setting(&conn, "focus_dnd_enabled", "true").unwrap();
+        save_setting(&conn, "focus_dnd_on_name", "My On").unwrap();
+        let s = load(&conn).unwrap();
+        assert!(s.focus_dnd_enabled);
+        assert_eq!(s.focus_dnd_on_name, "My On");
     }
 }

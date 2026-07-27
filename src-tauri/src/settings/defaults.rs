@@ -39,4 +39,8 @@ pub const DEFAULTS: &[(&str, &str)] = &[
     ("local_shortcut_volume_up", "ArrowUp"),
     ("local_shortcut_mute", "m"),
     ("local_shortcut_fullscreen", "F11"),
+    // --- Focus (Do Not Disturb) integration ---
+    ("focus_dnd_enabled", "false"),
+    ("focus_dnd_on_name", "Pomotroid DND On"),
+    ("focus_dnd_off_name", "Pomotroid DND Off"),
 ];

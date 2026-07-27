@@ -18,7 +18,7 @@ pub enum TimerCommand {
     Start,
     Pause,
     Resume,
-    Reset,
+    Reset { full: bool },
     /// Immediately fires a `Complete` event (user-initiated skip).
     Skip,
     /// Change the total duration; moves engine to Idle so caller must Start.
@@ -40,7 +40,7 @@ pub enum TimerEvent {
     Complete { skipped: bool },
     Paused { elapsed_secs: u32 },
     Resumed { elapsed_secs: u32 },
-    Reset,
+    Reset { full: bool },
     Suspended { elapsed_secs: u32 },
 }
 
@@ -134,9 +134,9 @@ fn run_loop(
                 // the frontend and then sync the next-round duration. Without
                 // this handler the command would be silently swallowed,
                 // leaving the listener blocked in recv() and the UI stale.
-                Ok(TimerCommand::Reset) => {
+                Ok(TimerCommand::Reset { full }) => {
                     elapsed_secs = 0;
-                    let _ = event_tx.send(TimerEvent::Reset);
+                    let _ = event_tx.send(TimerEvent::Reset { full });
                     Transition::Stay
                 }
                 // Skip while Idle: advance to the next round without starting.
@@ -158,9 +158,9 @@ fn run_loop(
                         ticks: 0,
                     }))
                 }
-                Ok(TimerCommand::Reset) => {
+                Ok(TimerCommand::Reset { full }) => {
                     elapsed_secs = 0;
-                    let _ = event_tx.send(TimerEvent::Reset);
+                    let _ = event_tx.send(TimerEvent::Reset { full });
                     Transition::To(Phase::Idle)
                 }
                 Ok(TimerCommand::Skip) => {
@@ -221,9 +221,9 @@ fn run_loop(
                         let _ = event_tx.send(TimerEvent::Complete { skipped: true });
                         Transition::To(Phase::Idle)
                     }
-                    Ok(TimerCommand::Reset) => {
+                    Ok(TimerCommand::Reset { full }) => {
                         elapsed_secs = 0;
-                        let _ = event_tx.send(TimerEvent::Reset);
+                        let _ = event_tx.send(TimerEvent::Reset { full });
                         Transition::To(Phase::Idle)
                     }
                     Ok(TimerCommand::Reconfigure { duration_secs: d }) => {
@@ -374,11 +374,11 @@ mod tests {
         let (handle, rx) = spawn(10, TICK);
         handle.send(TimerCommand::Start);
         std::thread::sleep(TICK * 2 + TICK / 2);
-        handle.send(TimerCommand::Reset);
+        handle.send(TimerCommand::Reset { full: true });
 
         let events = drain(&rx);
         assert!(
-            events.iter().any(|e| matches!(e, TimerEvent::Reset)),
+            events.iter().any(|e| matches!(e, TimerEvent::Reset { .. })),
             "expected Reset event"
         );
         // No Complete should have fired.
@@ -479,11 +479,11 @@ mod tests {
         // the event listener blocked and the frontend stale.
         let (handle, rx) = spawn(5, TICK);
         // Do NOT start — engine begins in Idle.
-        handle.send(TimerCommand::Reset);
+        handle.send(TimerCommand::Reset { full: true });
 
         let events = drain(&rx);
         assert!(
-            events.iter().any(|e| matches!(e, TimerEvent::Reset)),
+            events.iter().any(|e| matches!(e, TimerEvent::Reset { .. })),
             "Reset while Idle must emit a Reset event"
         );
     }

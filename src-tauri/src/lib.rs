@@ -3,6 +3,7 @@ pub mod commands;
 pub mod db;
 pub mod notifications;
 pub mod settings;
+pub mod focus;
 pub mod shortcuts;
 pub mod themes;
 pub mod timer;

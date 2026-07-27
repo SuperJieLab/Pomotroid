@@ -149,5 +149,11 @@
   "tooltip_dial_countdown": "启用后，进度弧从满倒计时至零，而非从零填充。",
   "tooltip_auto_start_work": "休息结束后自动开始下一个工作轮次。",
   "tooltip_auto_start_break": "工作轮次结束后自动开始休息。",
-  "tooltip_websocket": "启用本地 WebSocket 服务器，用于直播覆盖层等外部集成。默认禁用。"
+  "tooltip_websocket": "启用本地 WebSocket 服务器，用于直播覆盖层等外部集成。默认禁用。",
+  "focus_group": "快捷指令联动",
+  "focus_toggle": "自动切换勿扰模式",
+  "focus_toggle_desc": "工作轮开始运行「开启指令」，休息轮运行「关闭指令」，默认指向系统勿扰模式。",
+  "focus_on_name": "开启指令名",
+  "focus_off_name": "关闭指令名",
+  "focus_note": "请在「快捷指令」App 中创建对应名称的快捷指令（动作：设置专注 → 打开/关闭）。默认名为 Pomotroid DND On / Pomotroid DND Off。你也可以把这两个名字改成任意自建指令（如播放白噪音、控制灯光、记录日志），轮次切换时都会自动运行——不限于勿扰模式。"
 }
